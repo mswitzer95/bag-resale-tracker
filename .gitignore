@@ -1,0 +1,8 @@
+__pycache__/
+*.hcl
+*.tfstate
+*.terraform*
+*.tfstate*
+*.zip
+terraform/lambda_layer/python/*
+terraform/$..

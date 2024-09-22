@@ -1,0 +1,5 @@
+beautifulsoup4==4.12.3
+boto3==1.28.76
+pandas==2.2.3
+Requests==2.32.3
+s3fs
