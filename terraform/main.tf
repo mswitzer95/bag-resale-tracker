@@ -15,7 +15,7 @@ provider "aws" {
 }
 
 
-# S3 Bucket
+# S3 Bucket for the results
 resource "aws_s3_bucket" "csv_bucket" {
   bucket = "bag-resale-tracker-bucket"
 }
@@ -52,7 +52,29 @@ resource "aws_s3_bucket_policy" "csv_bucket" {
 }
 
 
-# IAM role for all lambdas
+# Upload products lambda
+data "archive_file" "upload_products_lambda" {
+  type        = "zip"
+  source_file = "../lambda/upload_products/lambda_function.py"
+  output_path = "upload_products_lambda.zip"
+}
+
+resource "aws_lambda_function" "upload_products_lambda" {
+  depends_on       = [data.archive_file.upload_products_lambda]
+  filename         = "upload_products_lambda.zip"
+  function_name    = "upload_products_lambda"
+  role             = aws_iam_role.bag_resale_tracker_lambda_role.arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.10"
+  layers           = [aws_lambda_layer_version.bag_resale_tracker_lambda_layer.arn]
+  source_code_hash = data.archive_file.upload_products_lambda.output_base64sha256
+  timeout          = 60
+  memory_size      = 2048
+}
+
+
+# Lambda
+# -- IAM role for all lambdas
 data "aws_iam_policy_document" "assume_role" {
   statement {
     effect = "Allow"
@@ -96,7 +118,7 @@ resource "aws_iam_role" "bag_resale_tracker_lambda_role" {
 }
 
 
-# Shared lambda layer
+# -- Shared lambda layer
 resource "null_resource" "make_python_dir" {
     provisioner "local-exec" {
       command = <<EOT
@@ -168,99 +190,40 @@ resource "aws_lambda_layer_version" "bag_resale_tracker_lambda_layer" {
 }
 
 
-# Resources for Fashionphile lambda
-data "archive_file" "fashionphile_lambda" {
-  type        = "zip"
-  source_file = "../lambda/fashionphile/lambda_function.py"
-  output_path = "fashionphile_lambda.zip"
-}
-
-resource "aws_lambda_function" "fashionphile_lambda" {
-  depends_on       = [data.archive_file.fashionphile_lambda]
-  filename         = "fashionphile_lambda.zip"
-  function_name    = "fashionphile_lambda"
-  role             = aws_iam_role.bag_resale_tracker_lambda_role.arn
-  handler          = "lambda_function.lambda_handler"
-  runtime          = "python3.10"
-  layers           = [aws_lambda_layer_version.bag_resale_tracker_lambda_layer.arn]
-  source_code_hash = data.archive_file.fashionphile_lambda.output_base64sha256
-  timeout          = 120
-  memory_size      = 512
-  environment {
-    variables = {
-      BUCKET_NAME = "${aws_s3_bucket.csv_bucket.bucket}"
-      OBJECT_NAME = "bag-resale-tracker.csv"
-      UPLOAD_LAMBDA_NAME = "${aws_lambda_function.upload_products_lambda.function_name}"
-    }
-  }
-}
-
-resource "aws_cloudwatch_event_rule" "fashionphile_lambda_schedule" {
-  name                = "fashionphile-lambda-schedule"
+# -- CRON Cloudwatch event rule
+resource "aws_cloudwatch_event_rule" "ingestor_lambda_schedule" {
+  name                = "bag_resale-tracker-lambda-schedule"
   schedule_expression = "cron(0 0 ? * * *)"
 }
 
-resource "aws_cloudwatch_event_target" "fashionphile_lambda_target" {
-  rule = aws_cloudwatch_event_rule.fashionphile_lambda_schedule.name
-  arn  = aws_lambda_function.fashionphile_lambda.arn
-}
 
-
-# Resources for upload products lambda
-data "archive_file" "upload_products_lambda" {
-  type        = "zip"
-  source_file = "../lambda/upload_products/lambda_function.py"
-  output_path = "upload_products_lambda.zip"
-}
-
-resource "aws_lambda_function" "upload_products_lambda" {
-  depends_on       = [data.archive_file.upload_products_lambda]
-  filename         = "upload_products_lambda.zip"
-  function_name    = "upload_products_lambda"
-  role             = aws_iam_role.bag_resale_tracker_lambda_role.arn
-  handler          = "lambda_function.lambda_handler"
-  runtime          = "python3.10"
-  layers           = [aws_lambda_layer_version.bag_resale_tracker_lambda_layer.arn]
-  source_code_hash = data.archive_file.upload_products_lambda.output_base64sha256
-  timeout          = 60
-  memory_size      = 2048
-}
-
-
-# Resources for Luxe du Jour lambda
-data "archive_file" "luxe_du_jour_lambda" {
-  type        = "zip"
-  source_file = "../lambda/luxe_du_jour/lambda_function.py"
-  output_path = "luxe_du_jour_lambda.zip"
-}
-
-resource "aws_lambda_function" "luxe_du_jour_lambda" {
-  depends_on       = [data.archive_file.luxe_du_jour_lambda]
-  filename         = "luxe_du_jour_lambda.zip"
-  function_name    = "luxe_du_jour_lambda"
-  role             = aws_iam_role.bag_resale_tracker_lambda_role.arn
-  handler          = "lambda_function.lambda_handler"
-  runtime          = "python3.10"
-  layers           = [aws_lambda_layer_version.bag_resale_tracker_lambda_layer.arn]
-  source_code_hash = data.archive_file.luxe_du_jour_lambda.output_base64sha256
-  timeout          = 120
-  memory_size      = 512
-  environment {
-    variables = {
-      BUCKET_NAME = "${aws_s3_bucket.csv_bucket.bucket}"
-      OBJECT_NAME = "bag-resale-tracker.csv"
-      UPLOAD_LAMBDA_NAME = "${aws_lambda_function.upload_products_lambda.function_name}"
-    }
+# -- Fashionphile ingestor Lambda
+module "fashionphile_ingestor_lambda" {
+  source                     = "./modules/ingestor_lambda"
+  function_name              = "fashionphile_lambda"
+  role_arn                   = aws_iam_role.bag_resale_tracker_lambda_role.arn
+  layers                     = [aws_lambda_layer_version.bag_resale_tracker_lambda_layer.arn]
+  source_file                = "../lambda/fashionphile/lambda_function.py"
+  cloudwatch_event_rule_name = aws_cloudwatch_event_rule.ingestor_lambda_schedule.name
+  environment_variables = {
+    BUCKET_NAME = "${aws_s3_bucket.csv_bucket.bucket}"
+    OBJECT_NAME = var.csv_file_name
+    UPLOAD_LAMBDA_NAME = "${aws_lambda_function.upload_products_lambda.function_name}"
   }
 }
 
-resource "aws_cloudwatch_event_rule" "luxe_du_jour_lambda_schedule" {
-  name                = "luxe-du-jour-lambda-schedule"
-  schedule_expression = "cron(0 0 ? * * *)"
-}
 
-resource "aws_cloudwatch_event_target" "luxe_du_jour_lambda_target" {
-  rule = aws_cloudwatch_event_rule.luxe_du_jour_lambda_schedule.name
-  arn  = aws_lambda_function.luxe_du_jour_lambda.arn
+# -- Luxe du Jour Lambda
+module "luxe_du_jour_ingestor_lambda" {
+  source                     = "./modules/ingestor_lambda"
+  function_name              = "luxe_du_jour_lambda"
+  role_arn                   = aws_iam_role.bag_resale_tracker_lambda_role.arn
+  layers                     = [aws_lambda_layer_version.bag_resale_tracker_lambda_layer.arn]
+  source_file                = "../lambda/luxe_du_jour/lambda_function.py"
+  cloudwatch_event_rule_name = aws_cloudwatch_event_rule.ingestor_lambda_schedule.name
+  environment_variables = {
+    BUCKET_NAME = "${aws_s3_bucket.csv_bucket.bucket}"
+    OBJECT_NAME = var.csv_file_name
+    UPLOAD_LAMBDA_NAME = "${aws_lambda_function.upload_products_lambda.function_name}"
+  }
 }
-
