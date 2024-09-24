@@ -104,6 +104,18 @@ data "aws_iam_policy_document" "lambda_full_access" {
   }
 }
 
+data "aws_iam_policy_document" "lambda_cloudwatch_access" {
+  statement {
+    effect    = "Allow"
+    actions   = [
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents"
+    ]
+    resources = ["*"]
+  }
+}
+
 resource "aws_iam_role" "bag_resale_tracker_lambda_role" {
   name               = "bag_resale_tracker_lambda_role"
   assume_role_policy = data.aws_iam_policy_document.assume_role.json
@@ -114,6 +126,10 @@ resource "aws_iam_role" "bag_resale_tracker_lambda_role" {
   inline_policy {
     name   = "lambda_full_access"
     policy = data.aws_iam_policy_document.lambda_full_access.json
+  }
+  inline_policy {
+    name   = "lambda_cloudwatch_access"
+    policy = data.aws_iam_policy_document.lambda_cloudwatch_access.json
   }
 }
 
@@ -205,6 +221,7 @@ module "fashionphile_ingestor_lambda" {
   layers                     = [aws_lambda_layer_version.bag_resale_tracker_lambda_layer.arn]
   source_file                = "../lambda/fashionphile/lambda_function.py"
   cloudwatch_event_rule_name = aws_cloudwatch_event_rule.ingestor_lambda_schedule.name
+  cloudwatch_event_rule_arn  = aws_cloudwatch_event_rule.ingestor_lambda_schedule.arn
   environment_variables = {
     BUCKET_NAME = "${aws_s3_bucket.csv_bucket.bucket}"
     OBJECT_NAME = var.csv_file_name
@@ -221,6 +238,7 @@ module "luxe_du_jour_ingestor_lambda" {
   layers                     = [aws_lambda_layer_version.bag_resale_tracker_lambda_layer.arn]
   source_file                = "../lambda/luxe_du_jour/lambda_function.py"
   cloudwatch_event_rule_name = aws_cloudwatch_event_rule.ingestor_lambda_schedule.name
+  cloudwatch_event_rule_arn  = aws_cloudwatch_event_rule.ingestor_lambda_schedule.arn
   environment_variables = {
     BUCKET_NAME = "${aws_s3_bucket.csv_bucket.bucket}"
     OBJECT_NAME = var.csv_file_name

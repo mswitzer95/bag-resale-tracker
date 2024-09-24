@@ -28,7 +28,7 @@ variable "layers" {
 variable "timeout" {
   description = "The execution timeout (in seconds) of the Lambda function."
   type        = number
-  default     = 120
+  default     = 180
 }
 
 variable "memory_size" {
@@ -49,5 +49,10 @@ variable "source_file" {
 
 variable "cloudwatch_event_rule_name" {
   description = "The name of the Cloudwatch Event Rule to attach to the Lambda."
+  type        = string
+}
+
+variable "cloudwatch_event_rule_arn" {
+  description = "The ARN of the CloudWatch Event Rule to attach to the Lambda."
   type        = string
 }

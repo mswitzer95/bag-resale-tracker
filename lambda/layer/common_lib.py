@@ -71,7 +71,9 @@ class Product:
             "CONDITIONS" list defined in this package.
         product_family (str): The product family of the product. Must be in 
             the "PRODUCT_FAMILIES" list defined in this package.
-        source (str): The source where the product is listed for sale
+        source (str): The source where the product is listed for sale.
+        date (str): A string representation of the date the product was 
+            scraped.
     """
     
     def __init__(
@@ -81,7 +83,8 @@ class Product:
             price: float,
             condition: str,
             product_family: str | None,
-            source: str) -> None:
+            source: str,
+            date: str) -> None:
         """
         Constructor
         Args:
@@ -92,14 +95,16 @@ class Product:
                 "CONDITIONS" list defined in this package.
             product_family (str): The product family of the product. Must be 
                 in the "PRODUCT_FAMILIES" list defined in this package.
-            source (str): The source where the product is listed for sale
+            source (str): The source where the product is listed for sale.
+            date (str): A string representation of the date the product was 
+                scraped.
         Returns: None
         """
 
         if (
             not all(
                 isinstance(arg, str)
-                for arg in [brand_name, product_name, condition, source]) 
+                for arg in [brand_name, product_name, condition, source, date])
             or not condition in CONDITIONS
             or not isinstance(price, float)
             or not (
@@ -114,6 +119,7 @@ class Product:
         self.condition = condition
         self.product_family = product_family
         self.source = source
+        self.date = date
 
 
 def upload_products(

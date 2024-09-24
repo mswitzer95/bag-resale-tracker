@@ -28,3 +28,11 @@ resource "aws_cloudwatch_event_target" "lambda" {
   rule = var.cloudwatch_event_rule_name
   arn  = aws_lambda_function.lambda.arn
 }
+
+resource "aws_lambda_permission" "lambda" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.lambda.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = var.cloudwatch_event_rule_arn
+}

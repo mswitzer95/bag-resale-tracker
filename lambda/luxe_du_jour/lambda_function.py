@@ -8,6 +8,7 @@ from common_lib import PRODUCT_FAMILIES, CONDITIONS, Product, upload_products
 from random import shuffle, sample, choice
 import re
 from time import sleep
+from datetime import date
 
 
 logger = logging.getLogger()
@@ -86,6 +87,7 @@ def lambda_handler(event, context):
             f"Got {response.status_code} while requesting base URL.")
         return { "statusCode": 500 }
 
+    today = date.today().isoformat()
     search_url = f"{BASE_URL}home/search"
     params = {
         "brands": None,
@@ -147,7 +149,8 @@ def lambda_handler(event, context):
                         price=price,
                         condition=condition,
                         product_family=product_family,
-                        source="Luxe du Jour")
+                        source="Luxe du Jour",
+                        date=today)
                     products.append(product)
 
                 sleep(choice(range(1, 6)) / 10)
