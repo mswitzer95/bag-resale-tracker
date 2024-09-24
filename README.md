@@ -1,4 +1,5 @@
-This project scrapes resale handbag prices and dumps them to a flat file in an S3 bucket.
+This project scrapes resale handbag prices and dumps them to a flat file in an S3 bucket. The data in this bucket is to be accessed by Power BI to create dashboards and visualizations that support business logic (outside the scope of this repo). The broad application has the following architecture:\
+![architectural diagram](./diagram.png)
 
 
 # Setup
