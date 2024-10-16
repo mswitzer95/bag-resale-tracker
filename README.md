@@ -1,4 +1,4 @@
-This project scrapes resale handbag prices and dumps them to a flat file in an S3 bucket. The data in this bucket is to be accessed by Power BI to create dashboards and visualizations that support business logic (outside the scope of this repo). The broad application has the following architecture:\
+This project scrapes resale handbag prices and dumps them to a flat file in an S3 bucket. The data in this bucket is to accessed by Power BI to create visualizations that support business logic. The broad application has the following architecture:\
 ![architectural diagram](./diagram.png)
 
 
@@ -14,3 +14,7 @@ terraform apply
 
 ## To Destroy:
 terraform destroy
+
+# Power BI	
+The Power BI report is attached as a .pbix file. The following is a screenshot of a page of the report, showing how scraped data retrieved from the S3 bucket can be shown as a time series of prices, to help support business logic and decision making:\
+![Power BI report](./report.png)
